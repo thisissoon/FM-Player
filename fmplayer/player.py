@@ -1,4 +1,15 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+"""
+fmplayer.player
+===============
+
+This module handles playing the music.
+"""
+
 import json
+import logging
 import os
 import redis
 import spotify
@@ -6,9 +17,20 @@ import sys
 import threading
 
 
+LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(LOG_FORMAT))
+logger.addHandler(handler)
+
+
 class Player(object):
 
-    def __init__(self):
+    def __init__(self, log_level='ERROR'):
+        logger.setLevel(logging.getLevelName(log_level))
+        logger.debug('Starting PLayer')
+
         self.config = spotify.Config()
         self.config.load_application_key_file(
             os.environ.get('SPOTIFY_KEY_PATH'))
@@ -60,52 +82,54 @@ class Player(object):
                         self.stop()
 
     def play(self, uri):
-        print 'Playing {0}'.format(uri)
+        logger.info('Playing: {0}'.format(uri))
         track = self.session.get_track(uri).load()
 
         self.session.player.load(track)
         self.session.player.play()
 
     def pause(self):
-        self.session.player.pause()
+        if self.session.player.state == spotify.PlayerState.PLAYING:
+            logger.info('Pausing playback')
+            self.session.player.pause()
 
     def resume(self):
         if self.session.player.state == spotify.PlayerState.PAUSED:
+            logger.info('Resuming playback')
             self.session.player.play()
 
     def stop(self):
         if self.session.player.state != spotify.PlayerState.UNLOADED:
+            logger.info('Stopping playback')
             self.session.player.unload()
 
     def watch_playlist(self):
-        print self.session.player.state
         if self.session.player.state == spotify.PlayerState.UNLOADED:
-            print 'Watching playlist'
+            logger.debug('Watching playlist')
             while True:
                 if self.redis.llen('playlist') > 0:
-                    print 'Playlist not empty - stopped watching'
+                    logger.debug('Playlist not empty - stopped watching')
                     self.play(self.redis.lpop('playlist'))
                     return
 
     def on_connection_state_updated(self, session):
         if session.connection.state is spotify.ConnectionState.LOGGED_IN:
-            print 'Logged In'
+            logger.info('Logged In to Spotify')
             self.logged_in.set()
 
             if self.redis.llen('playlist') > 0:
                 self.play(self.redis.lpop('playlist'))
             else:
-                print 'Playlist empty'
+                logger.debug('Playlist Empty')
                 self.watch_playlist()
 
     def on_end_of_track(self, *agrs, **kwargs):
-        print 'End of Track'
+        logger.info('End of Track')
         self.session.player.unload()
         if self.redis.llen('playlist') > 0:
-            print 'playing next track'
             self.play(self.redis.lpop('playlist'))
         else:
-            print 'Playlist empty'
+            logger.debug('Playlist Empty')
             self.watch_playlist()
 
 

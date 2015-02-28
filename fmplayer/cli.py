@@ -9,7 +9,6 @@ CLI interface for FM Player.
 """
 
 import click
-import logging
 
 from fmplayer.player import Player
 
@@ -25,7 +24,8 @@ def cli(ctx, log_level):
     """FM Player is the thisissoon.fm Player software.
     """
 
-    ctx.obj['LOG_LEVEL'] = logging.getLevelName(log_level)
+    ctx.obj = {}
+    ctx.obj['LOG_LEVEL'] = log_level
     click.echo('Log Level: {0}'.format(log_level))
 
 
@@ -35,7 +35,7 @@ def play(ctx):
     """ Start the Player
     """
 
-    Player()
+    Player(log_level=ctx.obj['LOG_LEVEL'])
 
 
 if __name__ == '__main__':
