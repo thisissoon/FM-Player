@@ -13,7 +13,6 @@ import logging
 import os
 import redis
 import spotify
-import sys
 import threading
 
 
@@ -131,10 +130,3 @@ class Player(object):
         else:
             logger.debug('Playlist Empty')
             self.watch_playlist()
-
-
-if __name__ == '__main__':
-    try:
-        Player()
-    except KeyboardInterrupt:
-        sys.exit()

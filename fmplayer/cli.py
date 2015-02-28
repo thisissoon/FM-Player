@@ -26,7 +26,6 @@ def cli(ctx, log_level):
 
     ctx.obj = {}
     ctx.obj['LOG_LEVEL'] = log_level
-    click.echo('Log Level: {0}'.format(log_level))
 
 
 @cli.command()
