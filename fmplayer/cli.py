@@ -13,28 +13,54 @@ import click
 from fmplayer.player import Player
 
 
-@click.group()
+@click.command()
 @click.option(
     '--log-level',
     '-l',
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']),
     default='ERROR')
-@click.pass_context
-def cli(ctx, log_level):
+@click.option(
+    '--spotify-user',
+    '-u',
+    envvar='SPOTIFY_USER',
+    help='Spotify user name',
+    required=True)
+@click.option(
+    '--spotify-pass',
+    '-p',
+    envvar='SPOTIFY_PASS',
+    help='Spotify password',
+    required=True)
+@click.option(
+    '--spotify-key',
+    '-k',
+    envvar='SPOTIFY_KEY',
+    help='Path to Spotify API key',
+    required=True)
+@click.option(
+    '--redis-uri',
+    '-r',
+    envvar='REDIS_URI',
+    help='e.g: redis://localhost:6379/',
+    default='redis://localhost')
+@click.option(
+    '--redis-channel',
+    '-c',
+    envvar='REDIS_CHANNEL',
+    help='Channel to listen on for events',
+    required=True)
+@click.option(
+    '--redis-db',
+    '-c',
+    envvar='REDIS_DB',
+    type=int,
+    help='Redis DB to connect too',
+    required=True)
+def cli(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
     """
 
-    ctx.obj = {}
-    ctx.obj['LOG_LEVEL'] = log_level
-
-
-@cli.command()
-@click.pass_context
-def play(ctx):
-    """ Start the Player
-    """
-
-    Player(log_level=ctx.obj['LOG_LEVEL'])
+    Player(*args, **kwargs)
 
 
 if __name__ == '__main__':

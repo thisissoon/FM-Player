@@ -10,10 +10,11 @@ This module handles playing the music.
 
 import json
 import logging
-import os
-import redis
 import spotify
 import threading
+import urlparse
+
+from redis import StrictRedis
 
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
@@ -26,13 +27,21 @@ logger.addHandler(handler)
 
 class Player(object):
 
-    def __init__(self, log_level='ERROR'):
+    def __init__(
+            self,
+            spotify_user,
+            spotify_pass,
+            spotify_key,
+            redis_uri,
+            redis_db,
+            redis_channel,
+            log_level='ERROR'):
+
         logger.setLevel(logging.getLevelName(log_level))
         logger.debug('Starting PLayer')
 
         self.config = spotify.Config()
-        self.config.load_application_key_file(
-            os.environ.get('SPOTIFY_KEY_PATH'))
+        self.config.load_application_key_file(spotify_key)
         self.config.dont_save_metadata_for_playlists = True
         self.config.initially_unload_playlists = True
 
@@ -50,14 +59,14 @@ class Player(object):
             spotify.SessionEvent.END_OF_TRACK,
             self.on_end_of_track)
 
-        self.session.login(
-            os.environ.get('SPOTIFY_USER'),
-            os.environ.get('SPOTIFY_PASS'))
+        self.session.login(spotify_user, spotify_pass)
 
-        self.redis = redis.StrictRedis(
-            host=os.environ.get('REDIS_HOST'),
-            port=int(os.environ.get('REDIS_PORT')),
-            db=int(os.environ.get('REDIS_DB')))
+        uri = urlparse.urlparse(redis_uri)
+        self.redis = StrictRedis(
+            host=uri.hostname,
+            port=uri.port,
+            password=uri.password,
+            db=redis_db)
 
         self.logged_in = threading.Event()
         self.end_of_track = threading.Event()
