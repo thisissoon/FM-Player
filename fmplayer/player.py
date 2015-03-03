@@ -91,10 +91,13 @@ class Player(object):
 
     def play(self, uri):
         logger.info('Playing: {0}'.format(uri))
-        track = self.session.get_track(uri).load()
 
-        self.session.player.load(track)
-        self.session.player.play()
+        try:
+            track = self.session.get_track(uri).load()
+            self.session.player.load(track)
+            self.session.player.play()
+        except (spotify.error.LibError, ValueError):
+            self.play(self.redis.lpop('playlist'))
 
     def pause(self):
         if self.session.player.state == spotify.PlayerState.PLAYING:
