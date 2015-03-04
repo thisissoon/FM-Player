@@ -25,6 +25,11 @@ handler.setFormatter(logging.Formatter(LOG_FORMAT))
 logger.addHandler(handler)
 
 
+PLAYLIST_KEY = 'fm:player:state:playlist'
+PAUSED_KEY = 'fm:player:state:paused'
+PLAYING_KEY = 'fm:player:state:playing'
+
+
 class Player(object):
 
     def __init__(
@@ -76,7 +81,7 @@ class Player(object):
 
     def listen(self):
         pubsub = self.redis.pubsub()
-        pubsub.subscribe('fm.player')
+        pubsub.subscribe('fm:player:channel')
 
         while True:
             for item in pubsub.listen():
@@ -88,6 +93,8 @@ class Player(object):
                         self.resume()
                     if data['event'] == 'stop':
                         self.stop()
+                    if data['event'] == 'add':
+                        self.add(data['uri'])
 
     def play(self, uri):
         logger.info('Playing: {0}'.format(uri))
@@ -96,17 +103,23 @@ class Player(object):
             track = self.session.get_track(uri).load()
             self.session.player.load(track)
             self.session.player.play()
+            self.redis.set(PLAYING_KEY, uri)
         except (spotify.error.LibError, ValueError):
-            self.play(self.redis.lpop('playlist'))
+            self.play(self.redis.lpop(PLAYLIST_KEY))
+
+    def add(self, uri):
+        self.redis.rpush(PLAYLIST_KEY, uri)
 
     def pause(self):
         if self.session.player.state == spotify.PlayerState.PLAYING:
             logger.info('Pausing playback')
+            self.redis.set(PAUSED_KEY, 1)
             self.session.player.pause()
 
     def resume(self):
         if self.session.player.state == spotify.PlayerState.PAUSED:
             logger.info('Resuming playback')
+            self.redis.set(PAUSED_KEY, 0)
             self.session.player.play()
 
     def stop(self):
@@ -118,9 +131,9 @@ class Player(object):
         if self.session.player.state == spotify.PlayerState.UNLOADED:
             logger.debug('Watching playlist')
             while True:
-                if self.redis.llen('playlist') > 0:
+                if self.redis.llen(PLAYLIST_KEY) > 0:
                     logger.debug('Playlist not empty - stopped watching')
-                    self.play(self.redis.lpop('playlist'))
+                    self.play(self.redis.lpop(PLAYLIST_KEY))
                     return
 
     def on_connection_state_updated(self, session):
@@ -128,8 +141,8 @@ class Player(object):
             logger.info('Logged In to Spotify')
             self.logged_in.set()
 
-            if self.redis.llen('playlist') > 0:
-                self.play(self.redis.lpop('playlist'))
+            if self.redis.llen(PLAYLIST_KEY) > 0:
+                self.play(self.redis.lpop(PLAYLIST_KEY))
             else:
                 logger.debug('Playlist Empty')
                 self.watch_playlist()
@@ -137,8 +150,8 @@ class Player(object):
     def on_end_of_track(self, *agrs, **kwargs):
         logger.info('End of Track')
         self.session.player.unload()
-        if self.redis.llen('playlist') > 0:
-            self.play(self.redis.lpop('playlist'))
+        if self.redis.llen(PLAYLIST_KEY) > 0:
+            self.play(self.redis.lpop(PLAYLIST_KEY))
         else:
             logger.debug('Playlist Empty')
             self.watch_playlist()
