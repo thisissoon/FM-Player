@@ -94,7 +94,7 @@ class Player(object):
                     if data['event'] == 'stop':
                         self.stop()
                     if data['event'] == 'add':
-                        self.add(data['uri'])
+                        self.add(data['track']['spotify_uri'])
 
     def play(self, uri):
         logger.info('Playing: {0}'.format(uri))
@@ -150,6 +150,7 @@ class Player(object):
     def on_end_of_track(self, *agrs, **kwargs):
         logger.info('End of Track')
         self.session.player.unload()
+        self.redis.delete(PLAYING_KEY)
         if self.redis.llen(PLAYLIST_KEY) > 0:
             self.play(self.redis.lpop(PLAYLIST_KEY))
         else:
