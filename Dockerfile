@@ -10,6 +10,13 @@ RUN apt-get update && apt-get install -y portaudio19-dev \
     python-pip \
     python-dev \
     libffi-dev \
-    libspotify-dev
+    libspotify-dev \
+    libasound2-dev
 
-RUN pip install pyspotify==2.0.0b4
+RUN mkdir /fm
+
+ADD . /fm
+
+WORKDIR /fm
+
+RUN python setup.py install

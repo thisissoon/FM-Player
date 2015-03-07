@@ -40,7 +40,8 @@ class Player(object):
             redis_uri,
             redis_db,
             redis_channel,
-            log_level='ERROR'):
+            log_level='ERROR',
+            audio_sink='portaudio'):
 
         logger.setLevel(logging.getLevelName(log_level))
         logger.debug('Starting PLayer')
@@ -55,7 +56,10 @@ class Player(object):
         self.loop = spotify.EventLoop(self.session)
         self.loop.start()
 
-        self.audio = spotify.PortAudioSink(self.session)
+        self.audio = {
+            'portaudio': spotify.PortAudioSink,
+            'alsa': spotify.AlsaSink
+        }.get(audio_sink)(self.session)
 
         self.session.on(
             spotify.SessionEvent.CONNECTION_STATE_UPDATED,

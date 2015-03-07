@@ -42,7 +42,7 @@ from fmplayer.player import Player
     '-r',
     envvar='REDIS_URI',
     help='e.g: redis://localhost:6379/',
-    default='redis://localhost')
+    default='redis://localhost:6379/')
 @click.option(
     '--redis-channel',
     '-c',
@@ -51,11 +51,16 @@ from fmplayer.player import Player
     required=True)
 @click.option(
     '--redis-db',
-    '-c',
+    '-d',
     envvar='REDIS_DB',
     type=int,
     help='Redis DB to connect too',
     required=True)
+@click.option(
+    '--audio-sink',
+    '-s',
+    type=click.Choice(['portaudio', 'alsa']),
+    default='portaudio')
 def cli(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
     """
