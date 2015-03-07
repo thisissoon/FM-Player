@@ -59,6 +59,7 @@ from fmplayer.player import Player
 @click.option(
     '--audio-sink',
     '-s',
+    envvar='AUDIO_SINK',
     type=click.Choice(['portaudio', 'alsa', 'fake']),
     default='portaudio')
 def cli(*args, **kwargs):

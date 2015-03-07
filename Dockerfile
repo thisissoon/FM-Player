@@ -11,8 +11,7 @@ RUN apt-get update && apt-get install -y portaudio19-dev \
     python-dev \
     libffi-dev \
     libspotify-dev \
-    libasound2-dev \
-    alsa-utils
+    libasound2-dev
 
 RUN mkdir /fm
 
@@ -21,3 +20,5 @@ ADD . /fm
 WORKDIR /fm
 
 RUN python setup.py install
+
+CMD fm-player
