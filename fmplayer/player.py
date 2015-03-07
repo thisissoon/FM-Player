@@ -30,6 +30,20 @@ PAUSED_KEY = 'fm:player:state:paused'
 PLAYING_KEY = 'fm:player:state:playing'
 
 
+class FakeSink(spotify.sink.Sink):
+    """ A fake audio sink, doesen't pass the audio to a device, this is for
+    development purposes only.
+    """
+
+    def __init__(self, session):
+        logger.info('Running Fake Audio Sink - There will be no audio output')
+        self._session = session
+        self.on()
+
+    def _on_music_delivery(self, session, audio_format, frames, num_frames):
+        return num_frames
+
+
 class Player(object):
 
     def __init__(
@@ -58,7 +72,8 @@ class Player(object):
 
         self.audio = {
             'portaudio': spotify.PortAudioSink,
-            'alsa': spotify.AlsaSink
+            'alsa': spotify.AlsaSink,
+            'fake': FakeSink
         }.get(audio_sink)(self.session)
 
         self.session.on(

@@ -59,7 +59,7 @@ from fmplayer.player import Player
 @click.option(
     '--audio-sink',
     '-s',
-    type=click.Choice(['portaudio', 'alsa']),
+    type=click.Choice(['portaudio', 'alsa', 'fake']),
     default='portaudio')
 def cli(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.

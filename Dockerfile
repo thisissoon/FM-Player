@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y portaudio19-dev \
     python-dev \
     libffi-dev \
     libspotify-dev \
-    libasound2-dev
+    libasound2-dev \
+    alsa-utils
 
 RUN mkdir /fm
 
