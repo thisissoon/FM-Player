@@ -6,6 +6,13 @@ listen for events on a Redis pub/sub channel and also emit events to this channe
 It will watch a Redis list which acts as the Playlist queue containing Spotify track
 URIs. The player will pop tracks of the top of the list and play them one by one.
 
+See Also
+--------
+
+* API Service: https://github.com/thisissoon/FM-API
+* Web Socket Service: https://github.com/thisissoon/FM-Socket
+* FE Client: https://github.com/thisissoon/FM-Frontend
+
 Running the Player
 ------------------
 
