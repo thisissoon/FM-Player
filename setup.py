@@ -92,7 +92,7 @@ setup(
     # Entry points, for example Flask-Script
     entry_points={
         'console_scripts': [
-            'fm-player = fmplayer.cli:cli',
+            'fm-player = fmplayer.cli:run',
         ]
     },
     classifiers=[
