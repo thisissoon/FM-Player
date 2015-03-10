@@ -8,6 +8,7 @@ fmplayer.player
 Classes and methods for running the Spotify player.
 """
 
+import alsaaudio
 import gevent
 import json
 import logging
@@ -24,9 +25,6 @@ LOGGED_IN_EVENT = threading.Event()
 STOP_EVENT = threading.Event()
 
 PLAYLIST_KEY = 'fm:player:queue'
-
-VOL_MAX = 100
-VOL_MIN = 86
 
 
 class Player(object):
@@ -154,23 +152,69 @@ class Player(object):
         else:
             logger.debug('Cannot Resume - Not in paused state')
 
+    def get_mixer(self):
+        """ Returns the mixer object. The mixer must be recreated every time
+        it is used to be able to  observe volume/mute changes done by other
+        applications.
+
+        Returns
+        -------
+        alsaaudio.Mixer
+            The mixer instance
+        """
+
+        return alsaaudio.Mixer(control='PCM', cardindex=0)
+
     def get_volume(self):
-        """
-        """
+        """ Returns the current mixer volume. Adapted from:
+        https://github.com/mopidy/mopidy-alsamixer
 
-        pass
-
-    def increase_volume(self):
-        """ Increase the audio Volume
-        """
-
-        pass
-
-    def decrease_volume(self):
-        """ Decrease the audio volume
+        Returns
+        -------
+        int
+            The volume level from 0 to 100
         """
 
-        pass
+        mixer = self.get_mixer()
+        channels = mixer.getvolume()
+        if not channels:
+            return None
+        elif channels.count(channels[0]) == len(channels):
+            return int(channels[0])
+        else:
+            # Not all channels have the same volume
+            return None
+
+    def set_volume(self, volume):
+        """ Set the player audio volume between 0 and 100.
+
+        Arguments
+        ---------
+        volume : int
+            The level to set the volume at
+        """
+
+        if volume >= 0 and volume <= 100:
+            mixer = self.get_mixer()
+            mixer.setvolume(int(volume))
+            logger.debug('Set volume level to {0}'.format(volume))
+        else:
+            logger.error('{0} is not a valid volume level'.format(volume))
+
+    def set_mute(self, mute):
+        """ Set the players mute state, basically setting the volume to 0.
+
+        Arguments
+        ---------
+        mute : bool
+            ``True`` to set mute, ``False`` to remove mute.
+        """
+
+        mixer = self.get_mixer()
+        try:
+            mixer.setmute(int(mute))
+        except Exception as e:
+            logging.exception(e)
 
 
 def queue_watcher(redis, player, channel):
@@ -240,8 +284,8 @@ def event_watcher(redis, player, channel):
     events = {
         'pause': player.pause,
         'resume': player.resume,
-        '+vol': player.increase_volume,
-        '-vol': player.decrease_volume,
+        'volume': player.set_volume,
+        'mute': player.set_volume,
     }
 
     for item in pubsub.listen():
