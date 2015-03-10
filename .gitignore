@@ -57,3 +57,5 @@ target/
 .spotify.key
 .env
 tmp/
+
+fugu.yml

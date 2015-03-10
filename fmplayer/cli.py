@@ -14,7 +14,8 @@ import logging
 import urlparse
 
 from gevent import monkey
-from fmplayer.player import Player, queue_watcher, event_watcher
+from fmplayer.player import Player, queue_watcher
+from fmplayer.events import event_watcher
 from redis import StrictRedis
 
 
@@ -91,6 +92,7 @@ def player(*args, **kwargs):
         kwargs.pop('spotify_key'),
         kwargs.pop('audio_sink'))
 
+    # Channel to listen for events
     channel = kwargs.pop('redis_channel')
 
     # Threads - Queue and Event Watcher

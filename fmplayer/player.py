@@ -201,6 +201,30 @@ class Player(object):
         else:
             logger.error('{0} is not a valid volume level'.format(volume))
 
+    def get_mute(self):
+        """ Returns the current mute state of the player. Amended from:
+        https://github.com/mopidy/mopidy-alsamixer
+
+        Returns
+        -------
+        bool
+            Mute state of the player
+        """
+
+        mixer = self.get_mixer()
+
+        try:
+            channels_muted = mixer.getmute()
+        except alsaaudio.ALSAAudioError as e:
+            logger.debug('Getting mute state failed: {0}'.format(e))
+            return None
+        if all(channels_muted):
+            return True
+        elif not any(channels_muted):
+            return False
+        else:
+            return None
+
     def set_mute(self, mute):
         """ Set the players mute state, basically setting the volume to 0.
 
@@ -260,40 +284,3 @@ def queue_watcher(redis, player, channel):
             }))
 
         gevent.sleep(random.randint(0, 2) * 0.001)
-
-
-def event_watcher(redis, player, channel):
-    """ This method watches the Redis PubSub channel for events. Once a valid
-    event is fired it will execute the desired functionality for that event.
-
-    Arguments
-    ---------
-    redis : obj
-        Redis connection instance
-    player : obj
-        Player instance
-    channel : str
-        Redis PubSub channel
-    """
-
-    logger.info('Starting Redis Event Loop')
-
-    pubsub = redis.pubsub()
-    pubsub.subscribe(channel)
-
-    events = {
-        'pause': player.pause,
-        'resume': player.resume,
-        'volume': player.set_volume,
-        'mute': player.set_volume,
-    }
-
-    for item in pubsub.listen():
-        logger.debug('Got Event: {0}'.format(item))
-        if item.get('type') == 'message':
-            data = json.loads(item.get('data'))
-            event = data.get('event')
-            if event in events:
-                logger.debug('Fire: {0}'.format(event))
-                function = events.get(event)
-                function()
