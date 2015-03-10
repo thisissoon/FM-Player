@@ -11,3 +11,7 @@ redis==2.10.3
 PyAudio==0.2.8
 pyalsaaudio==0.7
 pyspotify==2.0.0b4
+
+# Events
+
+gevent==1.0.1
