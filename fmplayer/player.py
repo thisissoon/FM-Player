@@ -25,6 +25,9 @@ STOP_EVENT = threading.Event()
 
 PLAYLIST_KEY = 'fm:player:queue'
 
+VOL_MAX = 100
+VOL_MIN = 86
+
 
 class Player(object):
     """ Handles playing music from Spotify.
@@ -58,6 +61,7 @@ class Player(object):
         logger.debug('Creating Session')
         self.session = spotify.Session(config)
         self.register_session_events()
+        self.session.preferred_bitrate(spotify.audio.Bitrate(1))
 
         # Set the session event loop going
         logger.debug('Starting Spotify Event Loop')
@@ -150,6 +154,24 @@ class Player(object):
         else:
             logger.debug('Cannot Resume - Not in paused state')
 
+    def get_volume(self):
+        """
+        """
+
+        pass
+
+    def increase_volume(self):
+        """ Increase the audio Volume
+        """
+
+        pass
+
+    def decrease_volume(self):
+        """ Decrease the audio volume
+        """
+
+        pass
+
 
 def queue_watcher(redis, player, channel):
     """ This method watches the playlist queue for tracks, once the queue has
@@ -218,6 +240,8 @@ def event_watcher(redis, player, channel):
     events = {
         'pause': player.pause,
         'resume': player.resume,
+        '+vol': player.increase_volume,
+        '-vol': player.decrease_volume,
     }
 
     for item in pubsub.listen():
