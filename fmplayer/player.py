@@ -5,173 +5,227 @@
 fmplayer.player
 ===============
 
-This module handles playing the music.
+Classes and methods for running the Spotify player.
 """
 
+import gevent
 import json
 import logging
 import spotify
 import threading
-import urlparse
+import random
 
-from redis import StrictRedis
-
-
-LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
-
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter(LOG_FORMAT))
-logger.addHandler(handler)
+from fmplayer.sinks import FakeSink
 
 
-PLAYLIST_KEY = 'fm:player:state:playlist'
-PAUSED_KEY = 'fm:player:state:paused'
-PLAYING_KEY = 'fm:player:state:playing'
+logger = logging.getLogger('fmplayer')
 
+LOGGED_IN_EVENT = threading.Event()
+STOP_EVENT = threading.Event()
 
-class FakeSink(spotify.sink.Sink):
-    """ A fake audio sink, doesen't pass the audio to a device, this is for
-    development purposes only.
-    """
-
-    def __init__(self, session):
-        logger.info('Running Fake Audio Sink - There will be no audio output')
-        self._session = session
-        self.on()
-
-    def _on_music_delivery(self, session, audio_format, frames, num_frames):
-        return num_frames
+PLAYLIST_KEY = 'fm:player:queue'
 
 
 class Player(object):
+    """ Handles playing music from Spotify.
+    """
 
-    def __init__(
-            self,
-            spotify_user,
-            spotify_pass,
-            spotify_key,
-            redis_uri,
-            redis_db,
-            redis_channel,
-            log_level='ERROR',
-            audio_sink='portaudio'):
+    def __init__(self, user, password, key, sink):
+        """ Initialises the Spotify Session, logs the user in and starts
+        the session event loop. The player does not manage state, it simply
+        cares about playing music.
 
-        logger.setLevel(logging.getLevelName(log_level))
-        logger.debug('Starting PLayer')
+        Arguments
+        ---------
+        user : str
+            The Spotify User
+        password : str
+            The Spotify User Password
+        key : str
+            Path to the Spotify API Key File
+        sink : str
+            The audio sink to use
+        """
 
-        self.config = spotify.Config()
-        self.config.load_application_key_file(spotify_key)
-        self.config.dont_save_metadata_for_playlists = True
-        self.config.initially_unload_playlists = True
+        # Session Configuration
+        logger.debug('Configuring Spotify Session')
+        config = spotify.Config()
+        config.load_application_key_file(key)
+        config.dont_save_metadata_for_playlists = True
+        config.initially_unload_playlists = True
 
-        self.session = spotify.Session(self.config)
+        # Create session
+        logger.debug('Creating Session')
+        self.session = spotify.Session(config)
+        self.register_session_events()
 
-        self.loop = spotify.EventLoop(self.session)
-        self.loop.start()
+        # Set the session event loop going
+        logger.debug('Starting Spotify Event Loop')
+        loop = spotify.EventLoop(self.session)
+        loop.start()
 
-        self.audio = {
-            'portaudio': spotify.PortAudioSink,
+        # Block until Login is complete
+        logger.debug('Waiting for Login to Complete...')
+        self.session.login(user, password)
+        LOGGED_IN_EVENT.wait()
+
+        # Set the Audio Sink for the Session
+        sinks = {
             'alsa': spotify.AlsaSink,
             'fake': FakeSink
-        }.get(audio_sink)(self.session)
+        }
+        logger.info('Settingw Audio Sink to: {0}'.format(sink))
+        sinks.get(sink, FakeSink)(self.session)
+
+    def register_session_events(self):
+        """ Sets up session events to listen for and set an appropriate
+        callback function.
+        """
 
         self.session.on(
             spotify.SessionEvent.CONNECTION_STATE_UPDATED,
             self.on_connection_state_updated)
+
         self.session.on(
             spotify.SessionEvent.END_OF_TRACK,
-            self.on_end_of_track)
+            self.on_track_of_end)
 
-        self.session.login(spotify_user, spotify_pass)
+    def on_connection_state_updated(self, session):
+        """ Fired when the connect to Spotify changes
+        """
 
-        uri = urlparse.urlparse(redis_uri)
-        self.redis = StrictRedis(
-            host=uri.hostname,
-            port=uri.port,
-            password=uri.password,
-            db=redis_db)
+        if session.connection.state is spotify.ConnectionState.LOGGED_IN:
+            logger.info('Login Complete')
+            LOGGED_IN_EVENT.set()  # Unblocks the player from starting
 
-        self.logged_in = threading.Event()
-        self.end_of_track = threading.Event()
-        self.logged_in.wait()
+    def on_track_of_end(self, session):
+        """ Fired when a playing track finishes, ensures the tack is unloaded
+        and the ``STOP_EVENT`` is set to ``True``.
+        """
 
-        self.listen()
-
-    def listen(self):
-        pubsub = self.redis.pubsub()
-        pubsub.subscribe('fm:player:channel')
-
-        while True:
-            for item in pubsub.listen():
-                if item.get('type') == 'message':
-                    data = json.loads(item.get('data'))
-                    if data['event'] == 'pause':
-                        self.pause()
-                    if data['event'] == 'resume':
-                        self.resume()
-                    if data['event'] == 'stop':
-                        self.stop()
-                    if data['event'] == 'add':
-                        self.add(data['track']['spotify_uri'])
+        logger.debug('Track End - Unloading')
+        session.player.unload()
+        logger.debug('STOP_EVENT set')
+        STOP_EVENT.set()  # Unblocks the playlist watcher
 
     def play(self, uri):
-        logger.info('Playing: {0}'.format(uri))
+        """ Plays a given Spotify URI. Ensures the ``STOP_EVENT`` event is set
+        back to ``False``, loads and then plays the track.
+
+        Arguments
+        ---------
+        uri : str
+            The Spotify URI - e.g: ``spotify:track:3Esqxo3D31RCjmdgwBPbOO``
+        """
+
+        logger.info('Play Track: {0}'.format(uri))
 
         try:
             track = self.session.get_track(uri).load()
             self.session.player.load(track)
             self.session.player.play()
-            self.redis.set(PLAYING_KEY, uri)
         except (spotify.error.LibError, ValueError):
-            self.play(self.redis.lpop(PLAYLIST_KEY))
-
-    def add(self, uri):
-        self.redis.rpush(PLAYLIST_KEY, uri)
+            logger.error('Unable to play: {0}'.uri)
+        else:
+            logger.debug('STOP_EVENT cleared')
+            STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
 
     def pause(self):
+        """ Pauses the current playback if the track is in a playing state.
+        """
+
         if self.session.player.state == spotify.PlayerState.PLAYING:
-            logger.info('Pausing playback')
-            self.redis.set(PAUSED_KEY, 1)
+            logger.info('Pausing Playback')
             self.session.player.pause()
+        else:
+            logger.debug('Cannot Pause - No Track Playing')
 
     def resume(self):
+        """ Resumes playback if the player is in a paused state.
+        """
+
         if self.session.player.state == spotify.PlayerState.PAUSED:
-            logger.info('Resuming playback')
-            self.redis.set(PAUSED_KEY, 0)
+            logger.info('Resuming Playback')
             self.session.player.play()
-
-    def stop(self):
-        if self.session.player.state != spotify.PlayerState.UNLOADED:
-            logger.info('Stopping playback')
-            self.session.player.unload()
-
-    def watch_playlist(self):
-        if self.session.player.state == spotify.PlayerState.UNLOADED:
-            logger.debug('Watching playlist')
-            while True:
-                if self.redis.llen(PLAYLIST_KEY) > 0:
-                    logger.debug('Playlist not empty - stopped watching')
-                    self.play(self.redis.lpop(PLAYLIST_KEY))
-                    return
-
-    def on_connection_state_updated(self, session):
-        if session.connection.state is spotify.ConnectionState.LOGGED_IN:
-            logger.info('Logged In to Spotify')
-            self.logged_in.set()
-
-            if self.redis.llen(PLAYLIST_KEY) > 0:
-                self.play(self.redis.lpop(PLAYLIST_KEY))
-            else:
-                logger.debug('Playlist Empty')
-                self.watch_playlist()
-
-    def on_end_of_track(self, *agrs, **kwargs):
-        logger.info('End of Track')
-        self.session.player.unload()
-        self.redis.delete(PLAYING_KEY)
-        if self.redis.llen(PLAYLIST_KEY) > 0:
-            self.play(self.redis.lpop(PLAYLIST_KEY))
         else:
-            logger.debug('Playlist Empty')
-            self.watch_playlist()
+            logger.debug('Cannot Resume - Not in paused state')
+
+
+def queue_watcher(redis, player, channel):
+    """ This method watches the playlist queue for tracks, once the queue has
+    a track the player will be told to play the track, this will cause the
+    method to block until the track has completed playing the track. Once the
+    track is finished we will go round again.
+
+    Arguments
+    ---------
+    redis : obj
+        Redis connection instance
+    player : obj
+        Player instance
+    channel : str
+        Redis PubSub channel
+    """
+
+    logger.info('Watching Playlist')
+
+    while True:
+        if redis.llen(PLAYLIST_KEY) > 0:
+            uri = redis.lpop(PLAYLIST_KEY)
+            logger.debug('Track popped of list: {0}'.format(uri))
+
+            # Play the track
+            player.play(uri)
+
+            logger.debug('Publish Play Event'.format(uri))
+            redis.publish(channel, json.dumps({
+                'event': 'play',
+                'uri': uri
+            }))
+            logger.debug('Waiting for {0} to Finish'.format(uri))
+
+            # Block until the player stops playing
+            STOP_EVENT.wait()
+
+            logger.debug('Publish Stop Event'.format(uri))
+            redis.publish(channel, json.dumps({
+                'event': 'end',
+                'uri': uri
+            }))
+
+        gevent.sleep(random.randint(0, 2) * 0.001)
+
+
+def event_watcher(redis, player, channel):
+    """ This method watches the Redis PubSub channel for events. Once a valid
+    event is fired it will execute the desired functionality for that event.
+
+    Arguments
+    ---------
+    redis : obj
+        Redis connection instance
+    player : obj
+        Player instance
+    channel : str
+        Redis PubSub channel
+    """
+
+    logger.info('Starting Redis Event Loop')
+
+    pubsub = redis.pubsub()
+    pubsub.subscribe(channel)
+
+    events = {
+        'pause': player.pause,
+        'resume': player.resume,
+    }
+
+    for item in pubsub.listen():
+        logger.debug('Got Event: {0}'.format(item))
+        if item.get('type') == 'message':
+            data = json.loads(item.get('data'))
+            event = data.get('event')
+            if event in events:
+                logger.debug('Fire: {0}'.format(event))
+                function = events.get(event)
+                function()

@@ -9,8 +9,24 @@ CLI interface for FM Player.
 """
 
 import click
+import gevent
+import logging
+import urlparse
 
-from fmplayer.player import Player
+from gevent import monkey
+from fmplayer.player import Player, queue_watcher, event_watcher
+from redis import StrictRedis
+
+
+monkey.patch_all()
+
+LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+
+
+logger = logging.getLogger('fmplayer')
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(LOG_FORMAT))
+logger.addHandler(handler)
 
 
 @click.option(
@@ -51,13 +67,40 @@ from fmplayer.player import Player
 @click.option(
     '--audio-sink',
     '-s',
-    type=click.Choice(['portaudio', 'alsa', 'fake']))
+    type=click.Choice(['alsa', 'fake']))
 @click.command()
 def player(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
     """
 
-    Player(*args, **kwargs)
+    logger.setLevel(logging.getLevelName(kwargs.pop('log_level')))
+    logger.info('Starting...')
+
+    uri = urlparse.urlparse(kwargs.pop('redis_uri'))
+    redis = StrictRedis(
+        host=uri.hostname,
+        port=uri.port,
+        password=uri.password,
+        db=kwargs.pop('redis_db'))
+
+    # Blocks until Login is complete
+    logger.debug('Creating Playing')
+    player = Player(
+        kwargs.pop('spotify_user'),
+        kwargs.pop('spotify_pass'),
+        kwargs.pop('spotify_key'),
+        kwargs.pop('audio_sink'))
+
+    channel = kwargs.pop('redis_channel')
+
+    # Threads - Queue and Event Watcher
+    threads = [
+        gevent.spawn(queue_watcher, redis, player, channel),
+        gevent.spawn(event_watcher, redis, player, channel),
+    ]
+
+    # Run
+    gevent.joinall(threads)
 
 
 def run():
