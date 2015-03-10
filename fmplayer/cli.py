@@ -14,8 +14,8 @@ import logging
 import urlparse
 
 from gevent import monkey
-from fmplayer.player import Player, queue_watcher
-from fmplayer.events import event_watcher
+from fmplayer.player import Player
+from fmplayer.events import EventHandler, event_watcher, queue_watcher
 from redis import StrictRedis
 
 
@@ -77,6 +77,10 @@ def player(*args, **kwargs):
     logger.setLevel(logging.getLevelName(kwargs.pop('log_level')))
     logger.info('Starting...')
 
+    # Channel to listen for events
+    channel = kwargs.pop('redis_channel')
+
+    # Redis Connection
     uri = urlparse.urlparse(kwargs.pop('redis_uri'))
     redis = StrictRedis(
         host=uri.hostname,
@@ -92,13 +96,13 @@ def player(*args, **kwargs):
         kwargs.pop('spotify_key'),
         kwargs.pop('audio_sink'))
 
-    # Channel to listen for events
-    channel = kwargs.pop('redis_channel')
+    # Create Handler Instance
+    handler = EventHandler(redis, player, channel)
 
     # Threads - Queue and Event Watcher
     threads = [
-        gevent.spawn(queue_watcher, redis, player, channel),
-        gevent.spawn(event_watcher, redis, player, channel),
+        gevent.spawn(queue_watcher, redis, handler),
+        gevent.spawn(event_watcher, redis, player, handler),
     ]
 
     # Run

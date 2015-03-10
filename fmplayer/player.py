@@ -9,12 +9,9 @@ Classes and methods for running the Spotify player.
 """
 
 import alsaaudio
-import gevent
-import json
 import logging
 import spotify
 import threading
-import random
 
 from fmplayer.sinks import FakeSink
 
@@ -23,8 +20,6 @@ logger = logging.getLogger('fmplayer')
 
 LOGGED_IN_EVENT = threading.Event()
 STOP_EVENT = threading.Event()
-
-PLAYLIST_KEY = 'fm:player:queue'
 
 
 class Player(object):
@@ -239,48 +234,3 @@ class Player(object):
             mixer.setmute(int(mute))
         except Exception as e:
             logging.exception(e)
-
-
-def queue_watcher(redis, player, channel):
-    """ This method watches the playlist queue for tracks, once the queue has
-    a track the player will be told to play the track, this will cause the
-    method to block until the track has completed playing the track. Once the
-    track is finished we will go round again.
-
-    Arguments
-    ---------
-    redis : obj
-        Redis connection instance
-    player : obj
-        Player instance
-    channel : str
-        Redis PubSub channel
-    """
-
-    logger.info('Watching Playlist')
-
-    while True:
-        if redis.llen(PLAYLIST_KEY) > 0:
-            uri = redis.lpop(PLAYLIST_KEY)
-            logger.debug('Track popped of list: {0}'.format(uri))
-
-            # Play the track
-            player.play(uri)
-
-            logger.debug('Publish Play Event'.format(uri))
-            redis.publish(channel, json.dumps({
-                'event': 'play',
-                'uri': uri
-            }))
-            logger.debug('Waiting for {0} to Finish'.format(uri))
-
-            # Block until the player stops playing
-            STOP_EVENT.wait()
-
-            logger.debug('Publish Stop Event'.format(uri))
-            redis.publish(channel, json.dumps({
-                'event': 'end',
-                'uri': uri
-            }))
-
-        gevent.sleep(random.randint(0, 2) * 0.001)
