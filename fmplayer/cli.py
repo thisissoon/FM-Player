@@ -98,6 +98,8 @@ def player(*args, **kwargs):
 
     # Create Handler Instance
     handler = EventHandler(redis, player, channel)
+    handler.set_volume({'volume': 70})  # Default volume
+    handler.set_mute({'mute': False})  # Default mute off
 
     # Threads - Queue and Event Watcher
     threads = [
