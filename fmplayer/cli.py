@@ -103,8 +103,8 @@ def player(*args, **kwargs):
 
     # Threads - Queue and Event Watcher
     threads = [
-        gevent.spawn(queue_watcher, redis, handler),
         gevent.spawn(event_watcher, redis, player, handler),
+        gevent.spawn(queue_watcher, redis, handler),
     ]
 
     # Run
