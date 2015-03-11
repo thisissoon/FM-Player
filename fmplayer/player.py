@@ -170,7 +170,11 @@ class Player(object):
             The volume level from 0 to 100
         """
 
-        mixer = self.get_mixer()
+        try:
+            mixer = self.get_mixer()
+        except alsaaudio.ALSAAudioError:
+            return None
+
         channels = mixer.getvolume()
         if not channels:
             return None
@@ -189,8 +193,12 @@ class Player(object):
             The level to set the volume at
         """
 
-        if volume >= 0 and volume <= 100:
+        try:
             mixer = self.get_mixer()
+        except alsaaudio.ALSAAudioError:
+            return None
+
+        if volume >= 0 and volume <= 100:
             mixer.setvolume(int(volume))
             logger.debug('Set volume level to {0}'.format(volume))
         else:
@@ -206,7 +214,10 @@ class Player(object):
             Mute state of the player
         """
 
-        mixer = self.get_mixer()
+        try:
+            mixer = self.get_mixer()
+        except alsaaudio.ALSAAudioError as e:
+            return False
 
         try:
             channels_muted = mixer.getmute()
@@ -229,7 +240,11 @@ class Player(object):
             ``True`` to set mute, ``False`` to remove mute.
         """
 
-        mixer = self.get_mixer()
+        try:
+            mixer = self.get_mixer()
+        except alsaaudio.ALSAAudioError as e:
+            return None
+
         try:
             mixer.setmute(int(mute))
         except Exception as e:

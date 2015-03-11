@@ -88,8 +88,13 @@ class EventHandler(object):
 
         volume = data.get('volume')
         if volume is not None:
+            logger.debug('Set Volume: {0}'.format(volume))
             self.player.set_volume(volume)
-            self.redis.set('fm:player:volume', self.player.get_volume())
+            self.redis.set('fm:player:volume', volume)
+            self.redis.publish(self.channel, json.dumps({
+                'event': 'volume_changed',
+                'volume': volume
+            }))
 
     def set_mute(self, data):
         """ Handles the mute event. Sets the player mute state and also sets
@@ -98,8 +103,13 @@ class EventHandler(object):
 
         mute = data.get('mute')
         if mute is not None:
+            logger.debug('Set Mute: {0}'.format(mute))
             self.player.set_mute(mute)
-            self.redis.set('fm:player:mute', int(self.player.get_mute()))
+            self.redis.set('fm:player:mute', int(mute))
+            self.redis.publish(self.channel, json.dumps({
+                'event': 'mute_changed',
+                'mute': mute
+            }))
 
 
 def event_watcher(redis, player, handler):
@@ -124,8 +134,8 @@ def event_watcher(redis, player, handler):
     events = {
         'pause': handler.pause,
         'resume': handler.resume,
-        'volume': handler.set_volume,
-        'mute': handler.set_mute,
+        'set_volume': handler.set_volume,
+        'set_mute': handler.set_mute,
     }
 
     for item in pubsub.listen():
