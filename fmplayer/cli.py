@@ -35,6 +35,7 @@ logger.addHandler(handler)
     '-l',
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']),
     default='ERROR')
+@click.option('--log-file', '-f')
 @click.option(
     '--spotify-user',
     '-u',
@@ -76,6 +77,12 @@ def player(*args, **kwargs):
 
     logger.setLevel(logging.getLevelName(kwargs.pop('log_level')))
     logger.info('Starting...')
+
+    logfile = kwargs.pop('log_file')
+    if logfile is not None:
+        handler = logging.FileHandler(filename=logfile)
+        handler.setFormatter(logging.Formatter(LOG_FORMAT))
+        logger.addHandler(handler)
 
     # Channel to listen for events
     channel = kwargs.pop('redis_channel')
