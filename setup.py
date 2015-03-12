@@ -79,7 +79,6 @@ setup(
         exclude=[
             'tests'
         ]),
-    data_files=[('', ['VERSION'])],
     include_package_data=True,
     zip_safe=False,
     # Dependencies
