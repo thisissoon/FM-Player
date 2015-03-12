@@ -1,0 +1,2 @@
+include setup.py README.rst MANIFEST.in install.reqs teest.reqs develop.reqs VERSION
+global-exclude *~
