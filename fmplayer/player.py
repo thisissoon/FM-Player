@@ -63,7 +63,7 @@ class Player(object):
 
         # Block until Login is complete
         logger.debug('Waiting for Login to Complete...')
-        self.session.login(user, password)
+        self.session.login(user, password, remember_me=True)
         LOGGED_IN_EVENT.wait()
 
         # Set the Audio Sink for the Session
@@ -94,6 +94,10 @@ class Player(object):
         if session.connection.state is spotify.ConnectionState.LOGGED_IN:
             logger.info('Login Complete')
             LOGGED_IN_EVENT.set()  # Unblocks the player from starting
+
+        if session.connection.state is spotify.ConnectionState.LOGGED_OUT:
+            logger.info('Logged Out')
+            self.session.relogin()
 
     def on_track_of_end(self, session):
         """ Fired when a playing track finishes, ensures the tack is unloaded
