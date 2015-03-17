@@ -48,6 +48,7 @@ class EventHandler(object):
         """ Handles the play event, this is called directly by the player
         queue watcher.
         """
+
         self.redis.publish(self.channel, json.dumps({
             'event': 'play',
             'uri': uri
@@ -60,7 +61,9 @@ class EventHandler(object):
         watcher.
         """
 
+        logger.debug('Remove current track')
         self.redis.delete('fm:player:current')
+        logger.debug('Publish end event')
         self.redis.publish(self.channel, json.dumps({
             'event': 'end',
             'uri': uri
@@ -173,6 +176,7 @@ def queue_watcher(redis, handler):
             handler.play(uri)
             logger.debug('Waiting for {0} to Finish'.format(uri))
             STOP_EVENT.wait()
+            logger.debug('Fire end event')
             handler.end(uri)
 
         gevent.sleep(random.randint(0, 2) * 0.001)
