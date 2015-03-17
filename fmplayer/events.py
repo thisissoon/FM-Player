@@ -60,6 +60,7 @@ class EventHandler(object):
         watcher.
         """
 
+        self.redis.delete('fm:player:current')
         self.redis.publish(self.channel, json.dumps({
             'event': 'end',
             'uri': uri
