@@ -48,6 +48,7 @@ class EventHandler(object):
         """ Handles the play event, this is called directly by the player
         queue watcher.
         """
+
         self.redis.publish(self.channel, json.dumps({
             'event': 'play',
             'uri': uri
@@ -55,12 +56,22 @@ class EventHandler(object):
         self.redis.set('fm:player:current', uri)
         self.player.play(uri)
 
+    def stop(self, data):
+        """ Handles the stop event. This triggered when a track should be
+        skipped during playback and the next track should be played.
+        """
+
+        logger.debug('Stop current track')
+        self.player.stop()
+
     def end(self, uri):
         """ Handles the end event. This is triggered directly by the queue
         watcher.
         """
 
+        logger.debug('Remove current track')
         self.redis.delete('fm:player:current')
+        logger.debug('Publish end event')
         self.redis.publish(self.channel, json.dumps({
             'event': 'end',
             'uri': uri
@@ -135,6 +146,7 @@ def event_watcher(redis, player, handler):
     events = {
         'pause': handler.pause,
         'resume': handler.resume,
+        'stop': handler.stop,
         'set_volume': handler.set_volume,
         'set_mute': handler.set_mute,
     }
@@ -173,6 +185,7 @@ def queue_watcher(redis, handler):
             handler.play(uri)
             logger.debug('Waiting for {0} to Finish'.format(uri))
             STOP_EVENT.wait()
+            logger.debug('Fire end event')
             handler.end(uri)
 
         gevent.sleep(random.randint(0, 2) * 0.001)

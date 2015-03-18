@@ -104,7 +104,7 @@ class Player(object):
         and the ``STOP_EVENT`` is set to ``True``.
         """
 
-        logger.debug('Track End - Unloading')
+        logger.debug('Track End - Unload')
         session.player.unload()
         logger.debug('STOP_EVENT set')
         STOP_EVENT.set()  # Unblocks the playlist watcher
@@ -130,6 +130,15 @@ class Player(object):
         else:
             logger.debug('STOP_EVENT cleared')
             STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
+
+    def stop(self):
+        """ Stop the current playing track by stopping, and un loading.
+        """
+
+        logger.debug('Track Stop - Unload')
+        self.session.player.unload()
+        logger.debug('STOP_EVENT set')
+        STOP_EVENT.set()  # Unblocks the playlist watcher
 
     def pause(self):
         """ Pauses the current playback if the track is in a playing state.
