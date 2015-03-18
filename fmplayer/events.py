@@ -56,6 +56,14 @@ class EventHandler(object):
         self.redis.set('fm:player:current', uri)
         self.player.play(uri)
 
+    def stop(self, data):
+        """ Handles the stop event. This triggered when a track should be
+        skipped during playback and the next track should be played.
+        """
+
+        logger.debug('Stop current track')
+        self.player.stop()
+
     def end(self, uri):
         """ Handles the end event. This is triggered directly by the queue
         watcher.
@@ -138,6 +146,7 @@ def event_watcher(redis, player, handler):
     events = {
         'pause': handler.pause,
         'resume': handler.resume,
+        'stop': handler.stop,
         'set_volume': handler.set_volume,
         'set_mute': handler.set_mute,
     }
