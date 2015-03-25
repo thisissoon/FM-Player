@@ -44,16 +44,31 @@ class EventHandler(object):
         self.player = player
         self.channel = channel
 
-    def play(self, uri):
+    def play(self, uri, user):
         """ Handles the play event, this is called directly by the player
         queue watcher.
+
+        Arguments
+        ---------
+        uri : str
+            The Spotify URI (spotify:track:1234)(
+        user : str
+            The User Primary Key
         """
 
+        # Publish the Play event - Just the URI needed
         self.redis.publish(self.channel, json.dumps({
             'event': 'play',
             'uri': uri
         }))
-        self.redis.set('fm:player:current', uri)
+
+        # Set the current track - needs to hold the uri and user
+        self.redis.set('fm:player:current', json.dumps({
+            'uri': uri,
+            'user': user
+        }))
+
+        # Start playing the track
         self.player.play(uri)
 
     def stop(self, data):
@@ -180,9 +195,11 @@ def queue_watcher(redis, handler):
 
     while True:
         if redis.llen(PLAYLIST_KEY) > 0:
-            uri = redis.lpop(PLAYLIST_KEY)
+            data = json.loads(redis.lpop(PLAYLIST_KEY))
+            uri = data['uri']
+            user = data['user']
             logger.debug('Track popped of list: {0}'.format(uri))
-            handler.play(uri)
+            handler.play(uri, user)
             logger.debug('Waiting for {0} to Finish'.format(uri))
             STOP_EVENT.wait()
             logger.debug('Fire end event')
