@@ -57,10 +57,14 @@ class EventHandler(object):
         """
 
         # Publish the Play event - Just the URI needed
-        self.redis.publish(self.channel, json.dumps({
+        event = json.dumps({
             'event': 'play',
-            'uri': uri
-        }))
+            'uri': uri,
+            'user': user
+        })
+
+        self.redis.publish(self.channel, event)
+        logger.debug('Play Event: {0}'.format(event))
 
         # Set the current track - needs to hold the uri and user
         self.redis.set('fm:player:current', json.dumps({
