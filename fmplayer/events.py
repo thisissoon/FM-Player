@@ -85,11 +85,13 @@ class EventHandler(object):
         """
 
         logger.debug('Remove current track')
+        current = json.loads(self.redis.get('fm:player:current'))
         self.redis.delete('fm:player:current')
         logger.debug('Publish end event')
         self.redis.publish(self.channel, json.dumps({
             'event': 'end',
-            'uri': uri
+            'uri': uri,
+            'user': current['user']
         }))
 
     def pause(self, data):
