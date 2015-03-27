@@ -87,6 +87,19 @@ class Player(object):
             spotify.SessionEvent.END_OF_TRACK,
             self.on_track_of_end)
 
+        self.session.on(
+            spotify.SessionEvent.CONNECTION_ERROR,
+            self.on_connection_error)
+
+    def on_connection_error(self, session, error):
+        """ Fired when a connection error occures.
+        """
+
+        logger.error('Connection Error: {0}'.error)
+
+        # Lets try and relogin
+        self.session.relogin()
+
     def on_connection_state_updated(self, session):
         """ Fired when the connect to Spotify changes
         """
