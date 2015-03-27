@@ -205,6 +205,7 @@ def queue_watcher(redis, handler):
         logger.info('Playing current track before watching playlist')
         current = json.loads(current)
         handler.play(current['uri'], current['user'])
+        STOP_EVENT.wait()
 
     logger.info('Watching Playlist')
 
