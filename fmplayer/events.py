@@ -197,6 +197,15 @@ def queue_watcher(redis, handler):
         Event handler instance
     """
 
+    # If we have a track in current play that first before watching the
+    # playlist
+    current = redis.get('fm:player:current')
+    logger.debug(current)
+    if current is not None:
+        logger.info('Playing current track before watching playlist')
+        current = json.loads(current)
+        handler.play(current['uri'], current['user'])
+
     logger.info('Watching Playlist')
 
     while True:

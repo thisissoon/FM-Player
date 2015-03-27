@@ -108,9 +108,6 @@ def player(*args, **kwargs):
     handler.set_volume({'volume': 70})  # Default volume
     handler.set_mute({'mute': False})  # Default mute off
 
-    # Reset current track
-    redis.delete('fm:player:current')
-
     # Threads - Queue and Event Watcher
     threads = [
         gevent.spawn(event_watcher, redis, player, handler),
