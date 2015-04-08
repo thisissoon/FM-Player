@@ -137,9 +137,10 @@ class Player(object):
         """
 
         if session is None:
-            session = self.session.player.unload()
+            session = self.session
 
         logger.info('Track Stop - Unload')
+        session.player.unload()
         logger.debug('Unblock Watcher: STOP_EVENT set')
         STOP_EVENT.set()
 
