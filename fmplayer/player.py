@@ -133,8 +133,8 @@ class Player(object):
             track = self.session.get_track(uri).load()
             self.session.player.load(track)
             self.session.player.play()
-        except Exception:  # Catch all cos I don't really know what will go wrong here
-            logger.exception('Unable to play {0} - forcing stop'.uri)
+        except:  # Catch all cos I don't really know what will go wrong here
+            logger.exception('Unable to play {0} - forcing stop'.format(uri))
             self.stop()
 
         logger.debug('Block Watcher - STOP_EVENT cleared')
