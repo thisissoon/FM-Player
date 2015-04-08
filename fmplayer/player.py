@@ -85,7 +85,7 @@ class Player(object):
 
         self.session.on(
             spotify.SessionEvent.END_OF_TRACK,
-            self.on_track_of_end)
+            self.on_track_end)
 
         self.session.on(
             spotify.SessionEvent.CONNECTION_ERROR,
@@ -112,15 +112,11 @@ class Player(object):
             logger.info('Logged Out')
             self.session.relogin()
 
-    def on_track_of_end(self, session):
-        """ Fired when a playing track finishes, ensures the tack is unloaded
-        and the ``STOP_EVENT`` is set to ``True``.
+    def on_track_end(self, session):
+        """ Called when the track finishes playing.
         """
 
-        logger.debug('Track End - Unload')
-        session.player.unload()
-        logger.debug('STOP_EVENT set')
-        STOP_EVENT.set()  # Unblocks the playlist watcher
+        self.stop(session)
 
     def play(self, uri):
         """ Plays a given Spotify URI. Ensures the ``STOP_EVENT`` event is set
@@ -134,24 +130,32 @@ class Player(object):
 
         logger.info('Play Track: {0}'.format(uri))
 
+        # Always block the playlist watcher before trying to play the track
+        # we can then catch play errors and move on gracefully through the
+        # normal stop procedure
+        logger.debug('Block Watcher - STOP_EVENT cleared')
+        STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
+
         try:
             track = self.session.get_track(uri).load()
             self.session.player.load(track)
             self.session.player.play()
-        except (spotify.error.LibError, ValueError):
-            logger.error('Unable to play: {0}'.uri)
-        else:
-            logger.debug('STOP_EVENT cleared')
-            STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
+        except Exception:  # Catch all cos I don't really know what will go wrong here
+            logger.exception('Unable to play {0} - forcing stop'.uri)
+            self.stop()
 
-    def stop(self):
-        """ Stop the current playing track by stopping, and un loading.
+    def stop(self, session=None):
+        """ Fired when a playing track finishes, ensures the tack is unloaded
+        and the ``STOP_EVENT`` is set to ``True``.
         """
 
-        logger.debug('Track Stop - Unload')
-        self.session.player.unload()
-        logger.debug('STOP_EVENT set')
-        STOP_EVENT.set()  # Unblocks the playlist watcher
+        if session is None:
+            session = self.session
+
+        logger.info('Track Stop - Unload')
+        session.player.unload()
+        logger.debug('Unblock Watcher: STOP_EVENT set')
+        STOP_EVENT.set()
 
     def pause(self):
         """ Pauses the current playback if the track is in a playing state.
