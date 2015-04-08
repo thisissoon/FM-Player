@@ -116,7 +116,7 @@ class Player(object):
         """ Called when the track finishes playing.
         """
 
-        self.stop(session)
+        self.stop()
 
     def play(self, uri):
         """ Plays a given Spotify URI. Ensures the ``STOP_EVENT`` event is set
@@ -144,16 +144,13 @@ class Player(object):
             logger.exception('Unable to play {0} - forcing stop'.uri)
             self.stop()
 
-    def stop(self, session=None):
+    def stop(self):
         """ Fired when a playing track finishes, ensures the tack is unloaded
         and the ``STOP_EVENT`` is set to ``True``.
         """
 
-        if session is None:
-            session = self.session
-
         logger.info('Track Stop - Unload')
-        session.player.unload()
+        self.session.player.unload()
         logger.debug('Unblock Watcher: STOP_EVENT set')
         STOP_EVENT.set()
 
