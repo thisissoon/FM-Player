@@ -128,21 +128,17 @@ class Player(object):
             The Spotify URI - e.g: ``spotify:track:3Esqxo3D31RCjmdgwBPbOO``
         """
 
-        logger.info('Play Track: {0}'.format(uri))
-
-        # Always block the playlist watcher before trying to play the track
-        # we can then catch play errors and move on gracefully through the
-        # normal stop procedure
-        logger.debug('Block Watcher - STOP_EVENT cleared')
-        STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
-
         try:
+            logger.info('Play Track: {0}'.format(uri))
             track = self.session.get_track(uri).load()
             self.session.player.load(track)
             self.session.player.play()
         except Exception:  # Catch all cos I don't really know what will go wrong here
             logger.exception('Unable to play {0} - forcing stop'.uri)
             self.stop()
+
+        logger.debug('Block Watcher - STOP_EVENT cleared')
+        STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
 
     def stop(self):
         """ Fired when a playing track finishes, ensures the tack is unloaded
