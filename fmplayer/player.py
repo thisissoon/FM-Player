@@ -108,14 +108,22 @@ class Player(object):
             logger.info('Login Complete')
             LOGGED_IN_EVENT.set()  # Unblocks the player from starting
 
-        if session.connection.state is spotify.ConnectionState.LOGGED_OUT:
-            logger.info('Logged Out')
+        # Force a re-login if the session is logged out, offline or disconnected
+        if session.connection.state in [
+                spotify.ConnectionState.LOGGED_OUT,
+                spotify.ConnectionState.OFFLINE,
+                spotify.ConnectionState.DISCONNECTED]:
+
+            logger.info('Connection State Change: {0}'.format(
+                session.connection.state))
+
             self.session.relogin()
 
     def on_track_end(self, session):
         """ Called when the track finishes playing.
         """
 
+        logger.debug('Track Finished Playing')
         self.stop()
 
     def play(self, uri):
@@ -128,14 +136,22 @@ class Player(object):
             The Spotify URI - e.g: ``spotify:track:3Esqxo3D31RCjmdgwBPbOO``
         """
 
+        if not self.session.connection.state == spotify.ConnectionState.LOGGED_IN:
+            logger.info('Not logged in, logging in')
+            self.session.relogin()
+
         try:
-            logger.info('Play Track: {0}'.format(uri))
-            track = self.session.get_track(uri).load()
-            self.session.player.load(track)
-            self.session.player.play()
-        except:  # Catch all cos I don't really know what will go wrong here
+            logger.info('Loading Track: {0}'.format(uri))
+            track = self.session.get_track(uri)
+            track.load()
+        except (ValueError, spotify.Error):
             logger.exception('Unable to play {0} - forcing stop'.format(uri))
             self.stop()
+
+        logger.info('Loading Track Into Player: {0}'.format(uri))
+        self.session.player.load(track)
+        logger.info('Playing Track: {0}'.format(uri))
+        self.session.player.play()
 
         logger.debug('Block Watcher - STOP_EVENT cleared')
         STOP_EVENT.clear()  # Reset STOP_EVENT flag to False
@@ -145,8 +161,10 @@ class Player(object):
         and the ``STOP_EVENT`` is set to ``True``.
         """
 
-        logger.info('Track Stop - Unload')
+        logger.info('Stop Track')
+        self.session.player.play(False)
         self.session.player.unload()
+
         logger.debug('Unblock Watcher: STOP_EVENT set')
         STOP_EVENT.set()
 
