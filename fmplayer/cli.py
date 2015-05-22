@@ -70,10 +70,7 @@ logger.addHandler(handler)
     '--audio-sink',
     '-s',
     type=click.Choice(['alsa', 'fake']))
-@click.option(
-    '--mixer',
-    '-m',
-    type=click.Choice(['alsa', 'fake']))
+@click.option('--mixer', '-m')
 @click.command()
 def player(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
