@@ -29,7 +29,7 @@ class Player(object):
     # Default Mixer Name
     mixer = 'PCM'
 
-    def __init__(self, user, password, key, sink, mixer):
+    def __init__(self, user, password, key, sink, mixer=None):
         """ Initialises the Spotify Session, logs the user in and starts
         the session event loop. The player does not manage state, it simply
         cares about playing music.
@@ -47,6 +47,9 @@ class Player(object):
         mixer : str
             Mixer Name
         """
+
+        if mixer is not None:
+            self.mixer = mixer
 
         # Session Configuration
         logger.debug('Configuring Spotify Session')
