@@ -26,7 +26,10 @@ class Player(object):
     """ Handles playing music from Spotify.
     """
 
-    def __init__(self, user, password, key, sink):
+    # Default Mixer Name
+    mixer = 'PCM'
+
+    def __init__(self, user, password, key, sink, mixer):
         """ Initialises the Spotify Session, logs the user in and starts
         the session event loop. The player does not manage state, it simply
         cares about playing music.
@@ -41,6 +44,8 @@ class Player(object):
             Path to the Spotify API Key File
         sink : str
             The audio sink to use
+        mixer : str
+            Mixer Name
         """
 
         # Session Configuration
@@ -199,7 +204,7 @@ class Player(object):
             The mixer instance
         """
 
-        return alsaaudio.Mixer(control='PCM', cardindex=0)
+        return alsaaudio.Mixer(control=self.mixer, cardindex=0)
 
     def get_volume(self):
         """ Returns the current mixer volume. Adapted from:

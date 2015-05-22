@@ -70,6 +70,10 @@ logger.addHandler(handler)
     '--audio-sink',
     '-s',
     type=click.Choice(['alsa', 'fake']))
+@click.option(
+    '--mixer',
+    '-m',
+    type=click.Choice(['alsa', 'fake']))
 @click.command()
 def player(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
@@ -101,7 +105,8 @@ def player(*args, **kwargs):
         kwargs.pop('spotify_user'),
         kwargs.pop('spotify_pass'),
         kwargs.pop('spotify_key'),
-        kwargs.pop('audio_sink'))
+        kwargs.pop('audio_sink'),
+        kwargs.pop('mixer'))
 
     # Create Handler Instance
     handler = EventHandler(redis, player, channel)
