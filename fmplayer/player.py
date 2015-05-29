@@ -216,7 +216,12 @@ class Player(object):
             The mixer instance
         """
 
-        return alsaaudio.Mixer(control=self.mixer, cardindex=0)
+        try:
+            return alsaaudio.Mixer(control=self.mixer, cardindex=0)
+        except:
+            logger.exception('Failed to get Mixer')
+
+        return None
 
     def set_volume(self, v):
         """ Set the player audio volume between 0 and 100.
@@ -229,9 +234,8 @@ class Player(object):
             based on the min and max volume levels.
         """
 
-        try:
-            mixer = self.get_mixer()
-        except alsaaudio.ALSAAudioError:
+        mixer = self.get_mixer()
+        if mixer is None:
             return None
 
         if not v >= 0 and not v <= 100:
