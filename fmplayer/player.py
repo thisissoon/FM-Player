@@ -240,10 +240,10 @@ class Player(object):
 
         # Convert the raw volume percentage into a percentage within the
         # min and max volume ranges
-        volume = v * int(round(((self.max_vol - self.min_vol) / 100) + self.min_vol))
+        volume = int(round(v * ((self.max_vol - self.min_vol) / 100) + self.min_vol))
 
         # Set the level
-        logger.debug('Set volume level to {0}'.format(volume))
+        logger.debug('Actual volume level level: {0}'.format(volume))
         mixer.setvolume(volume)
 
         return volume
