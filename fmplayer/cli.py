@@ -8,15 +8,19 @@ fmplayer.cli
 CLI interface for FM Player.
 """
 
-import click
-import gevent
+# Standard Libs
 import logging
 import urlparse
 
+# Third Party Libs
+import click
+import gevent
 from gevent import monkey
-from fmplayer.player import Player
-from fmplayer.events import EventHandler, event_watcher, queue_watcher
 from redis import StrictRedis
+
+# First Party Libs
+from fmplayer.events import EventHandler, event_watcher, queue_watcher
+from fmplayer.player import Player
 
 
 monkey.patch_all()
@@ -71,6 +75,8 @@ logger.addHandler(handler)
     '-s',
     type=click.Choice(['alsa', 'fake']))
 @click.option('--mixer', '-m')
+@click.option('--min_vol', type=int)
+@click.option('--max_vol', type=int)
 @click.command()
 def player(*args, **kwargs):
     """FM Player is the thisissoon.fm Player software.
@@ -103,7 +109,9 @@ def player(*args, **kwargs):
         kwargs.pop('spotify_pass'),
         kwargs.pop('spotify_key'),
         kwargs.pop('audio_sink'),
-        kwargs.pop('mixer'))
+        kwargs.pop('mixer'),
+        kwargs.pop('min_vol'),
+        kwargs.pop('max_vol'))
 
     # Create Handler Instance
     handler = EventHandler(redis, player, channel)

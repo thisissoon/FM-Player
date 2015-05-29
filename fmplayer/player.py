@@ -8,11 +8,15 @@ fmplayer.player
 Classes and methods for running the Spotify player.
 """
 
-import alsaaudio
+# Standard Libs
 import logging
-import spotify
 import threading
 
+# Third Party Libs
+import alsaaudio
+import spotify
+
+# First Party Libs
 from fmplayer.sinks import FakeSink
 
 
@@ -26,10 +30,7 @@ class Player(object):
     """ Handles playing music from Spotify.
     """
 
-    # Default Mixer Name
-    mixer = 'PCM'
-
-    def __init__(self, user, password, key, sink, mixer=None):
+    def __init__(self, user, password, key, sink, mixer='PCM', min_vol=0, max_vol=100):
         """ Initialises the Spotify Session, logs the user in and starts
         the session event loop. The player does not manage state, it simply
         cares about playing music.
@@ -45,11 +46,19 @@ class Player(object):
         sink : str
             The audio sink to use
         mixer : str
-            Mixer Name
+            Mixer Name, default PCM
+        min_vol : int
+            Min volume level, default 0
+        max_vol : int
+            Max volume level, default 100
         """
 
-        if mixer is not None:
-            self.mixer = mixer
+        # Mixer
+        self.mixer = mixer
+
+        # Volume Levels
+        self.min_vol = min_vol
+        self.max_vol = max_vol
 
         # Session Configuration
         logger.debug('Configuring Spotify Session')
@@ -209,37 +218,15 @@ class Player(object):
 
         return alsaaudio.Mixer(control=self.mixer, cardindex=0)
 
-    def get_volume(self):
-        """ Returns the current mixer volume. Adapted from:
-        https://github.com/mopidy/mopidy-alsamixer
-
-        Returns
-        -------
-        int
-            The volume level from 0 to 100
-        """
-
-        try:
-            mixer = self.get_mixer()
-        except alsaaudio.ALSAAudioError:
-            return None
-
-        channels = mixer.getvolume()
-        if not channels:
-            return None
-        elif channels.count(channels[0]) == len(channels):
-            return int(channels[0])
-        else:
-            # Not all channels have the same volume
-            return None
-
-    def set_volume(self, volume):
+    def set_volume(self, v):
         """ Set the player audio volume between 0 and 100.
 
         Arguments
         ---------
-        volume : int
-            The level to set the volume at
+        v : int
+            The level to set the volume at, this should be between 0 and 100
+            This will be recalculated to the actual volume percentage to set
+            based on the min and max volume levels.
         """
 
         try:
@@ -247,11 +234,19 @@ class Player(object):
         except alsaaudio.ALSAAudioError:
             return None
 
-        if volume >= 0 and volume <= 100:
-            mixer.setvolume(int(volume))
-            logger.debug('Set volume level to {0}'.format(volume))
-        else:
-            logger.error('{0} is not a valid volume level'.format(volume))
+        if not v >= 0 and not v <= 100:
+            logger.error('{0} is not a valid volume level'.format(v))
+            return None
+
+        # Convert the raw volume percentage into a percentage within the
+        # min and max volume ranges
+        volume = v * int(round(((self.max_vol - self.min_vol) / 100) + self.min_vol))
+
+        # Set the level
+        logger.debug('Set volume level to {0}'.format(volume))
+        mixer.setvolume(volume)
+
+        return volume
 
     def get_mute(self):
         """ Returns the current mute state of the player. Amended from:
