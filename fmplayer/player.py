@@ -216,6 +216,8 @@ class Player(object):
             The mixer instance
         """
 
+        logger.debug('Get Mixer: {0}'.format(self.mixer))
+
         try:
             return alsaaudio.Mixer(control=self.mixer, cardindex=0)
         except:

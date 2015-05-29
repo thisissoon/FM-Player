@@ -104,14 +104,15 @@ def player(*args, **kwargs):
 
     # Blocks until Login is complete
     logger.debug('Creating Playing')
+    logger.debug(kwargs)
     player = Player(
         kwargs.pop('spotify_user'),
         kwargs.pop('spotify_pass'),
         kwargs.pop('spotify_key'),
         kwargs.pop('audio_sink'),
         mixer=kwargs.pop('mixer'),
-        min_vol=kwargs.pop('min_vol'),
-        max_vol=kwargs.pop('max_vol'))
+        min_vol=int(kwargs.pop('min_vol')),
+        max_vol=int(kwargs.pop('max_vol')))
 
     # Create Handler Instance
     handler = EventHandler(redis, player, channel)
