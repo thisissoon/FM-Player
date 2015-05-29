@@ -244,7 +244,11 @@ class Player(object):
 
         # Set the level
         logger.debug('Actual volume level level: {0}'.format(volume))
-        mixer.setvolume(volume)
+
+        try:
+            mixer.setvolume(volume)
+        except:
+            logger.exception('Error Setting Volume')
 
         return volume
 
