@@ -109,9 +109,9 @@ def player(*args, **kwargs):
         kwargs.pop('spotify_pass'),
         kwargs.pop('spotify_key'),
         kwargs.pop('audio_sink'),
-        kwargs.pop('mixer'),
-        kwargs.pop('min_vol'),
-        kwargs.pop('max_vol'))
+        mixer=kwargs.pop('mixer'),
+        min_vol=kwargs.pop('min_vol'),
+        max_vol=kwargs.pop('max_vol'))
 
     # Create Handler Instance
     handler = EventHandler(redis, player, channel)
