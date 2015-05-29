@@ -57,8 +57,8 @@ class Player(object):
         self.mixer = mixer
 
         # Volume Levels
-        self.min_vol = min_vol
-        self.max_vol = max_vol
+        self.min_vol = int(min_vol)
+        self.max_vol = int(max_vol)
 
         # Session Configuration
         logger.debug('Configuring Spotify Session')
@@ -246,7 +246,7 @@ class Player(object):
 
         # Convert the raw volume percentage into a percentage within the
         # min and max volume ranges
-        volume = int(round(v * ((self.max_vol - self.min_vol) / 100) + self.min_vol))
+        volume = int(round((v * ((self.max_vol - self.min_vol) / 100) + self.min_vol)))
 
         # Set the level
         logger.debug('Actual volume level level: {0}'.format(volume))
