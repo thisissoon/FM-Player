@@ -218,30 +218,6 @@ class Player(object):
 
         return alsaaudio.Mixer(control=self.mixer, cardindex=0)
 
-    def get_volume(self):
-        """ Returns the current mixer volume. Adapted from:
-        https://github.com/mopidy/mopidy-alsamixer
-
-        Returns
-        -------
-        int
-            The volume level from 0 to 100
-        """
-
-        try:
-            mixer = self.get_mixer()
-        except alsaaudio.ALSAAudioError:
-            return None
-
-        channels = mixer.getvolume()
-        if not channels:
-            return None
-        elif channels.count(channels[0]) == len(channels):
-            return int(channels[0])
-        else:
-            # Not all channels have the same volume
-            return None
-
     def set_volume(self, v):
         """ Set the player audio volume between 0 and 100.
 
