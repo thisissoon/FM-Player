@@ -8,6 +8,8 @@ fmplayer.player
 Classes and methods for running the Spotify player.
 """
 
+from __future__ import division
+
 # Standard Libs
 import logging
 import threading
